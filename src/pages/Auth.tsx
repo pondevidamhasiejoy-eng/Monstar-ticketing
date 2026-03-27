@@ -110,8 +110,12 @@ export default function AuthPage() {
         <div className="absolute inset-0 bg-gradient-to-br from-navy-950 via-navy-900 to-ocean-dark" />
         
         <div className="relative text-center">
-          <div className="w-20 h-20 bg-white/10 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-white/20">
-            <Anchor className="w-10 h-10 text-gold-400" />
+          <div className="flex items-center justify-center mx-auto mb-6">
+            <img
+              src="/assets/logo2.png"
+              alt="MonStar Ship Logo"
+              className="w-64 h-auto object-contain rounded-3xl"
+            />
           </div>
           <h1 className="font-display text-4xl font-bold text-white mb-4">MonStar</h1>
           <p className="text-navy-300 text-lg mb-12">Ship Lines Online Ticketing</p>

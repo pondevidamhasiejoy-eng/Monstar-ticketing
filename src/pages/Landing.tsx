@@ -13,8 +13,12 @@ export default function LandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-navy-100">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-navy-900 rounded-xl flex items-center justify-center">
-              <Anchor className="w-5 h-5 text-gold-400" />
+            <div className="w-20 h-10 rounded-xl flex items-center justify-center">
+               <img
+                  src="/assets/logo2.png"
+                  alt="MonStar Ship Logo"
+                  className="w-64 h-auto object-contain rounded-3xl"
+                />
             </div>
             <div>
               <span className="font-display font-bold text-navy-900 text-lg leading-none block">MonStar</span>

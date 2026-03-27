@@ -24,12 +24,16 @@ export default function AdminLayout() {
   const SidebarContent = () => (
     <>
       <div className="flex items-center gap-3 px-6 py-5 border-b border-navy-800">
-        <div className="w-9 h-9 bg-gold-400 rounded-xl flex items-center justify-center flex-shrink-0">
-          <Anchor className="w-5 h-5 text-navy-950" />
-        </div>
+         <div className="w-20 h-10 rounded-xl flex items-center justify-center">
+               <img
+                  src="/assets/logo2.png"
+                  alt="MonStar Ship Logo"
+                  className="w-64 h-auto object-contain rounded-3xl"
+                />
+            </div>
         <div>
           <span className="font-display font-bold text-white text-base leading-none block">MonStar</span>
-          <span className="text-xs text-navy-400">Admin Console</span>
+          <span className="text-xs text-navy-400">Admin</span>
         </div>
       </div>
 
