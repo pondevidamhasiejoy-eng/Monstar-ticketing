@@ -74,8 +74,6 @@ const firebaseConfig = {
 ```bash
 npm install -g firebase-tools
 firebase login
-firebase projects:list
-firebase use --add
 firebase deploy --only firestore:rules,firestore:indexes
 ```
 
