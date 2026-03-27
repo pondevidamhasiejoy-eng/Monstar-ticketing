@@ -5,6 +5,34 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Anchor, Eye, EyeOff, Mail, Lock, User, Phone, Ship } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { FirebaseError } from 'firebase/app';
+
+function getAuthErrorMessage(error: unknown): string {
+  if (error instanceof FirebaseError) {
+    switch (error.code) {
+      case 'auth/invalid-credential':
+      case 'auth/wrong-password':
+        return 'Incorrect password. Please try again.';
+      case 'auth/user-not-found':
+        return 'No account found with this email address.';
+      case 'auth/invalid-email':
+        return 'Invalid email address format.';
+      case 'auth/user-disabled':
+        return 'This account has been disabled. Contact support.';
+      case 'auth/too-many-requests':
+        return 'Too many failed attempts. Please wait a few minutes and try again.';
+      case 'auth/email-already-in-use':
+        return 'An account with this email already exists. Please sign in instead.';
+      case 'auth/weak-password':
+        return 'Password is too weak. Use at least 6 characters.';
+      case 'auth/network-request-failed':
+        return 'Network error. Check your internet connection and try again.';
+      default:
+        return error.message || 'An unexpected error occurred. Please try again.';
+    }
+  }
+  return 'An unexpected error occurred. Please try again.';
+}
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -49,7 +77,7 @@ export default function AuthPage() {
       setError('');
       await login(data.email, data.password);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to sign in. Check your credentials.');
+      setError(getAuthErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -68,7 +96,7 @@ export default function AuthPage() {
       });
       navigate('/passenger', { replace: true });
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to create account.');
+      setError(getAuthErrorMessage(e));
     } finally {
       setLoading(false);
     }

@@ -16,7 +16,7 @@ import { formatDate, formatDateTime, formatCurrency } from '@/lib/utils';
 const passengerSchema = z.object({
   firstName: z.string().min(1, 'Required'),
   lastName: z.string().min(1, 'Required'),
-  age: z.number({ coercion: true }).min(0).max(120),
+  age: z.coerce.number().min(0).max(120),
   type: z.enum(['adult', 'child', 'senior', 'infant']),
   idType: z.string().optional(),
   idNumber: z.string().optional(),
@@ -27,7 +27,7 @@ const bookingFormSchema = z.object({
   passengers: z.array(passengerSchema).min(1),
   hasCargo: z.boolean(),
   cargoDescription: z.string().optional(),
-  cargoWeight: z.number({ coercion: true }).optional(),
+  cargoWeight: z.coerce.number().optional(),
   notes: z.string().optional(),
 });
 
