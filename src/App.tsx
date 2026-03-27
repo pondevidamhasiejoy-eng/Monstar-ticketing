@@ -13,8 +13,14 @@ import TripManagement from '@/pages/admin/TripManagement';
 import BookingMonitor from '@/pages/admin/BookingMonitor';
 import ManifestReport from '@/pages/admin/ManifestReport';
 
-function ProtectedRoute({ children, requireAdmin = false }: { children: React.ReactNode; requireAdmin?: boolean }) {
-  const { currentUser, isAdmin } = useAuth();
+function ProtectedRoute({ children, requireAdmin = false }: { 
+  children: React.ReactNode; 
+  requireAdmin?: boolean 
+}) {
+  const { currentUser, isAdmin, loading } = useAuth();
+
+  if (loading) return null; // or a spinner
+
   if (!currentUser) return <Navigate to="/auth" replace />;
   if (requireAdmin && !isAdmin) return <Navigate to="/passenger" replace />;
   if (!requireAdmin && isAdmin) return <Navigate to="/admin" replace />;

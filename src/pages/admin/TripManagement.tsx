@@ -2,21 +2,21 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Ship, Plus, Edit2, Trash2, X, Upload, Calendar, Users, Package } from 'lucide-react';
+import { Ship, Plus, Edit2, Trash2, X, Upload, Calendar, Users, Package, MapPin, Clock, Tag } from 'lucide-react';
 import { getTrips, createTrip, updateTrip, deleteTrip } from '@/services/firestore';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import type { Trip } from '@/types';
 import { formatDate, formatCurrency, getStatusColor } from '@/lib/utils';
 
 const tripSchema = z.object({
-  tripName: z.string().min(2),
-  vesselName: z.string().min(2),
-  origin: z.string().min(2),
-  destination: z.string().min(2),
-  departureDate: z.string(),
-  arrivalDate: z.string(),
-  departureTime: z.string(),
-  arrivalTime: z.string(),
+  tripName: z.string().min(2, 'Required'),
+  vesselName: z.string().min(2, 'Required'),
+  origin: z.string().min(2, 'Required'),
+  destination: z.string().min(2, 'Required'),
+  departureDate: z.string().min(1, 'Required'),
+  arrivalDate: z.string().min(1, 'Required'),
+  departureTime: z.string().min(1, 'Required'),
+  arrivalTime: z.string().min(1, 'Required'),
   status: z.enum(['scheduled', 'boarding', 'departed', 'arrived', 'cancelled']),
   totalSeats: z.coerce.number().min(1),
   availableSeats: z.coerce.number().min(0),
@@ -30,6 +30,20 @@ const tripSchema = z.object({
 
 type TripFormData = z.infer<typeof tripSchema>;
 
+const inputCls = 'w-full px-3 py-2.5 border border-navy-200 rounded-xl text-sm text-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-500 focus:border-transparent transition-all bg-white';
+const labelCls = 'text-xs font-semibold text-navy-600 block mb-1.5';
+
+function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: string }) {
+  return (
+    <div className="flex items-center gap-2 pb-2 border-b border-navy-100 mb-4">
+      <div className="w-7 h-7 bg-navy-100 rounded-lg flex items-center justify-center">
+        <Icon className="w-3.5 h-3.5 text-navy-600" />
+      </div>
+      <span className="text-sm font-semibold text-navy-700">{title}</span>
+    </div>
+  );
+}
+
 export default function TripManagement() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,8 +55,20 @@ export default function TripManagement() {
 
   const form = useForm<TripFormData>({
     resolver: zodResolver(tripSchema),
-    defaultValues: { status: 'scheduled', totalSeats: 200, availableSeats: 200, totalCargoCapacity: 5000, availableCargoCapacity: 5000 },
+    defaultValues: {
+      status: 'scheduled',
+      totalSeats: 200,
+      availableSeats: 200,
+      totalCargoCapacity: 5000,
+      availableCargoCapacity: 5000,
+      pricingEconomy: 0,
+      pricingBusiness: 0,
+      pricingFirstClass: 0,
+      amenities: '',
+    },
   });
+
+  const { formState: { errors } } = form;
 
   function loadTrips() {
     setLoading(true);
@@ -54,7 +80,17 @@ export default function TripManagement() {
   function openCreate() {
     setEditingTrip(null);
     setVesselImageUrl('');
-    form.reset({ status: 'scheduled', totalSeats: 200, availableSeats: 200, totalCargoCapacity: 5000, availableCargoCapacity: 5000 });
+    form.reset({
+      status: 'scheduled',
+      totalSeats: 200,
+      availableSeats: 200,
+      totalCargoCapacity: 5000,
+      availableCargoCapacity: 5000,
+      pricingEconomy: 0,
+      pricingBusiness: 0,
+      pricingFirstClass: 0,
+      amenities: '',
+    });
     setShowModal(true);
   }
 
@@ -81,6 +117,13 @@ export default function TripManagement() {
       amenities: trip.amenities.join(', '),
     });
     setShowModal(true);
+  }
+
+  function closeModal() {
+    setShowModal(false);
+    form.reset();
+    setVesselImageUrl('');
+    setEditingTrip(null);
   }
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -128,7 +171,7 @@ export default function TripManagement() {
       } else {
         await createTrip(tripData as never);
       }
-      setShowModal(false);
+      closeModal();
       loadTrips();
     } finally {
       setSaving(false);
@@ -143,6 +186,7 @@ export default function TripManagement() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-3xl font-bold text-navy-900">Trip Management</h1>
@@ -153,6 +197,7 @@ export default function TripManagement() {
         </button>
       </div>
 
+      {/* Trip Cards */}
       {loading ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map(i => <div key={i} className="card-maritime p-6 animate-pulse h-48" />)}
@@ -166,7 +211,7 @@ export default function TripManagement() {
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {trips.map((trip) => (
-            <div key={trip.id} className="card-maritime overflow-hidden">
+            <div key={trip.id} className="card-maritime overflow-hidden group">
               {trip.vesselImage ? (
                 <img src={trip.vesselImage} alt={trip.vesselName} className="w-full h-36 object-cover" />
               ) : (
@@ -182,20 +227,17 @@ export default function TripManagement() {
                   </div>
                   <span className={`status-badge ${getStatusColor(trip.status)}`}>{trip.status}</span>
                 </div>
-
                 <div className="flex items-center gap-1.5 text-sm text-navy-700 mb-3 font-medium">
                   <span>{trip.origin}</span>
                   <span className="text-navy-300">→</span>
                   <span>{trip.destination}</span>
                 </div>
-
                 <div className="grid grid-cols-2 gap-2 text-xs text-navy-500 mb-4">
                   <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{formatDate(trip.departureDate)}</span>
                   <span className="flex items-center gap-1"><Users className="w-3 h-3" />{trip.availableSeats}/{trip.totalSeats} seats</span>
                   <span className="flex items-center gap-1"><Package className="w-3 h-3" />{trip.availableCargoCapacity}kg cargo</span>
                   <span className="text-emerald-600 font-medium">{formatCurrency(trip.pricing.economy)}+</span>
                 </div>
-
                 <div className="flex items-center gap-2">
                   <button onClick={() => openEdit(trip)} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium border border-navy-200 rounded-xl hover:bg-navy-50 text-navy-700 transition-colors">
                     <Edit2 className="w-3.5 h-3.5" /> Edit
@@ -209,127 +251,219 @@ export default function TripManagement() {
           ))}
         </div>
       )}
-
-      {/* Modal */}
+<div className="relative space-y-6 animate-fade-in">
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-navy-950/60 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-thin">
-            <div className="sticky top-0 bg-white border-b border-navy-100 px-6 py-4 flex items-center justify-between z-10 rounded-t-2xl">
-              <h2 className="font-display font-bold text-navy-900 text-lg">
-                {editingTrip ? 'Edit Trip' : 'Add New Trip'}
-              </h2>
-              <button onClick={() => setShowModal(false)} className="w-8 h-8 rounded-lg hover:bg-navy-100 flex items-center justify-center">
-                <X className="w-4 h-4 text-navy-600" />
-              </button>
-            </div>
+      <div className="absolute inset-0 z-50 flex items-center justify-center p-6">
 
-            <form onSubmit={form.handleSubmit(onSubmit)} className="p-6 space-y-5">
-              {/* Vessel Image */}
-              <div>
-                <label className="text-xs font-semibold text-navy-600 block mb-2">Vessel Image (Cloudinary)</label>
-                <div className="flex items-center gap-4">
-                  {vesselImageUrl ? (
-                    <img src={vesselImageUrl} alt="Vessel" className="w-20 h-16 object-cover rounded-xl border border-navy-200" />
-                  ) : (
-                    <div className="w-20 h-16 bg-navy-100 rounded-xl flex items-center justify-center">
-                      <Ship className="w-6 h-6 text-navy-400" />
-                    </div>
-                  )}
-                  <label className="flex items-center gap-2 border border-navy-200 rounded-xl px-4 py-2 text-sm text-navy-700 hover:bg-navy-50 cursor-pointer transition-colors">
-                    <Upload className="w-4 h-4" />
-                    {uploadingImage ? 'Uploading...' : 'Upload Image'}
-                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
-                  </label>
-                </div>
-              </div>
+        {/* Modal Box */}
+        <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col"
+          style={{ maxHeight: 'calc(100svh - 3rem)' }}>
 
-              <div className="grid sm:grid-cols-2 gap-4">
-                {[
-                  { name: 'tripName' as const, label: 'Trip Name', placeholder: 'e.g. Manila–Cebu Express' },
-                  { name: 'vesselName' as const, label: 'Vessel Name', placeholder: 'e.g. MV MonStar Queen' },
-                  { name: 'origin' as const, label: 'Origin Port', placeholder: 'e.g. Manila' },
-                  { name: 'destination' as const, label: 'Destination Port', placeholder: 'e.g. Cebu' },
-                ].map(({ name, label, placeholder }) => (
-                  <div key={name}>
-                    <label className="text-xs font-medium text-navy-600 block mb-1.5">{label}</label>
-                    <input {...form.register(name)} placeholder={placeholder} className="w-full px-3 py-2.5 border border-navy-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy-500" />
+              {/* ── Sticky Header ── */}
+              <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-navy-100 rounded-t-2xl bg-white">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 bg-navy-900 rounded-xl flex items-center justify-center">
+                    <Ship className="w-5 h-5 text-gold-400" />
                   </div>
-                ))}
-
-                <div>
-                  <label className="text-xs font-medium text-navy-600 block mb-1.5">Departure Date</label>
-                  <input {...form.register('departureDate')} type="date" className="w-full px-3 py-2.5 border border-navy-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy-500" />
+                  <div>
+                    <h2 className="font-display font-bold text-navy-900 text-lg leading-none">
+                      {editingTrip ? 'Edit Trip' : 'Add New Trip'}
+                    </h2>
+                    <p className="text-xs text-navy-400 mt-0.5">
+                      {editingTrip ? `Editing: ${editingTrip.tripName}` : 'Fill in the trip details below'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs font-medium text-navy-600 block mb-1.5">Departure Time</label>
-                  <input {...form.register('departureTime')} type="time" className="w-full px-3 py-2.5 border border-navy-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy-500" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-navy-600 block mb-1.5">Arrival Date</label>
-                  <input {...form.register('arrivalDate')} type="date" className="w-full px-3 py-2.5 border border-navy-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy-500" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-navy-600 block mb-1.5">Arrival Time</label>
-                  <input {...form.register('arrivalTime')} type="time" className="w-full px-3 py-2.5 border border-navy-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy-500" />
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-navy-600 block mb-1.5">Status</label>
-                  <select {...form.register('status')} className="w-full px-3 py-2.5 border border-navy-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy-500">
-                    <option value="scheduled">Scheduled</option>
-                    <option value="boarding">Boarding</option>
-                    <option value="departed">Departed</option>
-                    <option value="arrived">Arrived</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-navy-600 block mb-1.5">Total Seats</label>
-                  <input {...form.register('totalSeats')} type="number" className="w-full px-3 py-2.5 border border-navy-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy-500" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-navy-600 block mb-1.5">Available Seats</label>
-                  <input {...form.register('availableSeats')} type="number" className="w-full px-3 py-2.5 border border-navy-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy-500" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-navy-600 block mb-1.5">Total Cargo (kg)</label>
-                  <input {...form.register('totalCargoCapacity')} type="number" className="w-full px-3 py-2.5 border border-navy-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy-500" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-navy-600 block mb-1.5">Available Cargo (kg)</label>
-                  <input {...form.register('availableCargoCapacity')} type="number" className="w-full px-3 py-2.5 border border-navy-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy-500" />
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-navy-600 block mb-1.5">Economy Price (₱)</label>
-                  <input {...form.register('pricingEconomy')} type="number" className="w-full px-3 py-2.5 border border-navy-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy-500" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-navy-600 block mb-1.5">Business Price (₱)</label>
-                  <input {...form.register('pricingBusiness')} type="number" className="w-full px-3 py-2.5 border border-navy-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy-500" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-navy-600 block mb-1.5">First Class Price (₱)</label>
-                  <input {...form.register('pricingFirstClass')} type="number" className="w-full px-3 py-2.5 border border-navy-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy-500" />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-navy-600 block mb-1.5">Amenities (comma-separated)</label>
-                <input {...form.register('amenities')} placeholder="e.g. WiFi, Air Conditioning, Restaurant" className="w-full px-3 py-2.5 border border-navy-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy-500" />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="btn-outline text-sm px-5">Cancel</button>
-                <button type="submit" disabled={saving} className="btn-primary text-sm px-5">
-                  {saving ? 'Saving...' : editingTrip ? 'Update Trip' : 'Create Trip'}
+                <button onClick={closeModal} className="w-8 h-8 rounded-lg hover:bg-navy-100 flex items-center justify-center transition-colors">
+                  <X className="w-4 h-4 text-navy-600" />
                 </button>
               </div>
-            </form>
+
+              {/* ── Scrollable Body ── */}
+              <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin px-6 py-5 space-y-6">
+
+                {/* Section 1: Vessel Image */}
+                <div>
+                  <SectionHeader icon={Upload} title="Vessel Image" />
+                  <div className="flex items-center gap-4">
+                    <div className="w-24 h-20 rounded-xl overflow-hidden border-2 border-navy-200 flex-shrink-0 bg-navy-50 flex items-center justify-center">
+                      {vesselImageUrl ? (
+                        <img src={vesselImageUrl} alt="Vessel" className="w-full h-full object-cover" />
+                      ) : (
+                        <Ship className="w-8 h-8 text-navy-300" />
+                      )}
+                    </div>
+                    <div>
+                      <label className="inline-flex items-center gap-2 border border-navy-200 rounded-xl px-4 py-2.5 text-sm text-navy-700 hover:bg-navy-50 cursor-pointer transition-colors font-medium">
+                        <Upload className="w-4 h-4" />
+                        {uploadingImage ? 'Uploading...' : vesselImageUrl ? 'Change Image' : 'Upload Image'}
+                        <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
+                      </label>
+                      <p className="text-xs text-navy-400 mt-1.5">JPG, PNG or WEBP. Recommended 800×400px.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 2: Trip Info */}
+                <div>
+                  <SectionHeader icon={Ship} title="Trip Information" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={labelCls}>Trip Name *</label>
+                      <input {...form.register('tripName')} placeholder="e.g. Manila–Cebu Express" className={inputCls} />
+                      {errors.tripName && <p className="text-red-500 text-xs mt-1">{errors.tripName.message}</p>}
+                    </div>
+                    <div>
+                      <label className={labelCls}>Vessel Name *</label>
+                      <input {...form.register('vesselName')} placeholder="e.g. MV MonStar Queen" className={inputCls} />
+                      {errors.vesselName && <p className="text-red-500 text-xs mt-1">{errors.vesselName.message}</p>}
+                    </div>
+                    <div>
+                      <label className={labelCls}>Status</label>
+                      <select {...form.register('status')} className={inputCls}>
+                        <option value="scheduled">Scheduled</option>
+                        <option value="boarding">Boarding</option>
+                        <option value="departed">Departed</option>
+                        <option value="arrived">Arrived</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Amenities <span className="text-navy-400 font-normal">(comma-separated)</span></label>
+                      <input {...form.register('amenities')} placeholder="WiFi, Air Con, Restaurant" className={inputCls} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 3: Route */}
+                <div>
+                  <SectionHeader icon={MapPin} title="Route" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={labelCls}>Origin Port *</label>
+                      <input {...form.register('origin')} placeholder="e.g. Manila" className={inputCls} />
+                      {errors.origin && <p className="text-red-500 text-xs mt-1">{errors.origin.message}</p>}
+                    </div>
+                    <div>
+                      <label className={labelCls}>Destination Port *</label>
+                      <input {...form.register('destination')} placeholder="e.g. Cebu" className={inputCls} />
+                      {errors.destination && <p className="text-red-500 text-xs mt-1">{errors.destination.message}</p>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 4: Schedule */}
+                <div>
+                  <SectionHeader icon={Clock} title="Schedule" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={labelCls}>Departure Date *</label>
+                      <input {...form.register('departureDate')} type="date" className={inputCls} />
+                      {errors.departureDate && <p className="text-red-500 text-xs mt-1">Required</p>}
+                    </div>
+                    <div>
+                      <label className={labelCls}>Departure Time *</label>
+                      <input {...form.register('departureTime')} type="time" className={inputCls} />
+                      {errors.departureTime && <p className="text-red-500 text-xs mt-1">Required</p>}
+                    </div>
+                    <div>
+                      <label className={labelCls}>Arrival Date *</label>
+                      <input {...form.register('arrivalDate')} type="date" className={inputCls} />
+                      {errors.arrivalDate && <p className="text-red-500 text-xs mt-1">Required</p>}
+                    </div>
+                    <div>
+                      <label className={labelCls}>Arrival Time *</label>
+                      <input {...form.register('arrivalTime')} type="time" className={inputCls} />
+                      {errors.arrivalTime && <p className="text-red-500 text-xs mt-1">Required</p>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 5: Capacity */}
+                <div>
+                  <SectionHeader icon={Users} title="Capacity" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={labelCls}>Total Seats</label>
+                      <input {...form.register('totalSeats')} type="number" min={1} className={inputCls} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Available Seats</label>
+                      <input {...form.register('availableSeats')} type="number" min={0} className={inputCls} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Total Cargo (kg)</label>
+                      <input {...form.register('totalCargoCapacity')} type="number" min={0} className={inputCls} />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Available Cargo (kg)</label>
+                      <input {...form.register('availableCargoCapacity')} type="number" min={0} className={inputCls} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 6: Pricing */}
+                <div>
+                  <SectionHeader icon={Tag} title="Pricing (₱)" />
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className={labelCls}>Economy</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400 text-sm font-medium">₱</span>
+                        <input {...form.register('pricingEconomy')} type="number" min={0} className={`${inputCls} pl-7`} placeholder="0" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Business</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400 text-sm font-medium">₱</span>
+                        <input {...form.register('pricingBusiness')} type="number" min={0} className={`${inputCls} pl-7`} placeholder="0" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className={labelCls}>First Class</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400 text-sm font-medium">₱</span>
+                        <input {...form.register('pricingFirstClass')} type="number" min={0} className={`${inputCls} pl-7`} placeholder="0" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* ── Sticky Footer ── */}
+              <div className="flex-shrink-0 flex items-center justify-between gap-3 px-6 py-4 border-t border-navy-100 rounded-b-2xl bg-navy-50">
+                <p className="text-xs text-navy-400">* Required fields</p>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="px-5 py-2.5 text-sm font-medium text-navy-700 border border-navy-200 rounded-xl hover:bg-white transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={form.handleSubmit(onSubmit)}
+                    disabled={saving || uploadingImage}
+                    className="btn-primary text-sm px-6 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {saving ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>{editingTrip ? 'Update Trip' : 'Create Trip'}</>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+    </div>
     </div>
   );
 }
