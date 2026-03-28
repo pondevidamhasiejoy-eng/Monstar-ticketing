@@ -170,3 +170,7 @@ src/
 ---
 
 *MonStar Ship Lines — Philippines*
+
+
+cd functions && npm install && npm run build
+cd .. && firebase deploy --only functions

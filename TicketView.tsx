@@ -34,111 +34,30 @@ export default function TicketView() {
     const ticketEl = ticketRef.current;
     if (!ticketEl) return;
 
-    // Inline all critical styles so the iframe doesn't depend on external CSS loading
-    const computedStyles = `
-      @page { size: 8.5in 11in portrait; margin: 0.5in; }
-      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
-      html, body { margin: 0; padding: 0; background: white; font-family: sans-serif; }
-      .ticket-card { width: 100%; box-shadow: none !important; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; }
-      .bg-navy-950 { background-color: #0a1628 !important; }
-      .bg-navy-50 { background-color: #f8fafc !important; }
-      .bg-navy-100 { background-color: #f1f5f9 !important; }
-      .bg-gold-400 { background-color: #f59e0b !important; }
-      .bg-emerald-100 { background-color: #d1fae5 !important; }
-      .text-white { color: #ffffff !important; }
-      .text-navy-900 { color: #0f172a !important; }
-      .text-navy-700 { color: #1e293b !important; }
-      .text-navy-600 { color: #334155 !important; }
-      .text-navy-500 { color: #64748b !important; }
-      .text-navy-400 { color: #94a3b8 !important; }
-      .text-gold-400 { color: #f59e0b !important; }
-      .text-emerald-600 { color: #059669 !important; }
-      .text-amber-600 { color: #d97706 !important; }
-      .font-mono { font-family: monospace; }
-      .font-display { font-family: serif; }
-      .font-bold { font-weight: 700; }
-      .font-semibold { font-weight: 600; }
-      .font-medium { font-weight: 500; }
-      .text-xs { font-size: 0.75rem; }
-      .text-sm { font-size: 0.875rem; }
-      .text-lg { font-size: 1.125rem; }
-      .text-3xl { font-size: 1.875rem; }
-      .leading-none { line-height: 1; }
-      .uppercase { text-transform: uppercase; }
-      .capitalize { text-transform: capitalize; }
-      .tracking-wider { letter-spacing: 0.05em; }
-      .px-8 { padding-left: 2rem; padding-right: 2rem; }
-      .py-6 { padding-top: 1.5rem; padding-bottom: 1.5rem; }
-      .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
-      .py-1\.5 { padding-top: 0.375rem; padding-bottom: 0.375rem; }
-      .px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
-      .py-0\.5 { padding-top: 0.125rem; padding-bottom: 0.125rem; }
-      .mt-1 { margin-top: 0.25rem; }
-      .mt-4 { margin-top: 1rem; }
-      .mb-2 { margin-bottom: 0.5rem; }
-      .mb-3 { margin-bottom: 0.75rem; }
-      .ml-2 { margin-left: 0.5rem; }
-      .gap-1 { gap: 0.25rem; }
-      .gap-1\.5 { gap: 0.375rem; }
-      .gap-2 { gap: 0.5rem; }
-      .gap-4 { gap: 1rem; }
-      .gap-6 { gap: 1.5rem; }
-      .flex { display: flex; }
-      .flex-1 { flex: 1 1 0%; }
-      .flex-col { flex-direction: column; }
-      .flex-shrink-0 { flex-shrink: 0; }
-      .items-center { align-items: center; }
-      .justify-center { justify-content: center; }
-      .justify-between { justify-content: space-between; }
-      .text-center { text-align: center; }
-      .text-right { text-align: right; }
-      .space-y-2 > * + * { margin-top: 0.5rem; }
-      .border-b { border-bottom-width: 1px; }
-      .border-t { border-top-width: 1px; }
-      .last\:border-0:last-child { border-width: 0; }
-      .border-navy-100 { border-color: #f1f5f9; }
-      .rounded-full { border-radius: 9999px; }
-      .rounded-xl { border-radius: 0.75rem; }
-      .w-2 { width: 0.5rem; }
-      .h-2 { height: 0.5rem; }
-      .w-3 { width: 0.75rem; }
-      .h-3 { height: 0.75rem; }
-      .w-3\.5 { width: 0.875rem; }
-      .h-3\.5 { height: 0.875rem; }
-      .w-5 { width: 1.25rem; }
-      .h-5 { height: 1.25rem; }
-      .w-6 { width: 1.5rem; }
-      .h-6 { height: 1.5rem; }
-      .w-8 { width: 2rem; }
-      .h-px { height: 1px; }
-      .w-10 { width: 2.5rem; }
-      .h-10 { height: 2.5rem; }
-      .w-28 { width: 7rem; }
-      .h-28 { height: 7rem; }
-      .h-\[1px\] { height: 1px; }
-      .bg-navy-300 { background-color: #cbd5e1 !important; }
-      .bg-navy-400 { background-color: #94a3b8 !important; }
-      .border-navy-200 { border-color: #e2e8f0; }
-      .border-dashed { border-style: dashed; }
-      .border-2 { border-width: 2px; }
-      .status-badge { display: inline-block; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; background: #e2e8f0; color: #475569; }
-      .block { display: block; }
-      img { max-width: 100%; height: auto; display: block; }
-    `;
+    // Build a minimal page with only the ticket HTML
+    const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map((el) => el.outerHTML)
+      .join('
+');
 
     const html = [
       '<!DOCTYPE html><html><head>',
       '<meta charset="utf-8" />',
       '<title>Ticket - ' + (booking?.bookingRef ?? '') + '</title>',
-      '<style>' + computedStyles + '</style>',
+      styles,
+      '<style>',
+      'body { margin: 1cm; background: white; }',
+      '@page { size: A4 portrait; margin: 1cm; }',
+      '</style>',
       '</head><body>',
       ticketEl.outerHTML,
       '</body></html>',
-    ].join('');
+    ].join('
+');
 
+    // Use a hidden iframe — avoids popup blockers, prints only the ticket
     const iframe = document.createElement('iframe');
-    // Give it real size off-screen so it renders properly before printing
-    iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:800px;height:600px;border:none;visibility:hidden;';
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:none;';
     document.body.appendChild(iframe);
 
     const doc = iframe.contentDocument || iframe.contentWindow?.document;
@@ -147,21 +66,12 @@ export default function TicketView() {
     doc.write(html);
     doc.close();
 
-    // Wait for images (QR code) to load before printing
-    const images = doc.querySelectorAll('img');
-    const imagePromises = Array.from(images).map(
-      (img) => img.complete ? Promise.resolve() : new Promise((res) => { img.onload = res; img.onerror = res; })
-    );
-
-    Promise.all(imagePromises).then(() => {
-      setTimeout(() => {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-        setTimeout(() => document.body.removeChild(iframe), 2000);
-      }, 300);
-    });
+    iframe.onload = () => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      setTimeout(() => document.body.removeChild(iframe), 1000);
+    };
   }
-
 
   if (loading) {
     return (

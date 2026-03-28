@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, KeyboardEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -25,7 +25,7 @@ const tripSchema = z.object({
   pricingEconomy: z.coerce.number().min(0),
   pricingBusiness: z.coerce.number().min(0),
   pricingFirstClass: z.coerce.number().min(0),
-  amenities: z.string(),
+  amenities: z.string().optional(),
 });
 
 type TripFormData = z.infer<typeof tripSchema>;
@@ -52,6 +52,9 @@ export default function TripManagement() {
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [vesselImageUrl, setVesselImageUrl] = useState('');
+  const [amenityTags, setAmenityTags] = useState<string[]>([]);
+  const [amenityInput, setAmenityInput] = useState('');
+  const amenityInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<TripFormData>({
     resolver: zodResolver(tripSchema),
@@ -80,6 +83,8 @@ export default function TripManagement() {
   function openCreate() {
     setEditingTrip(null);
     setVesselImageUrl('');
+    setAmenityTags([]);
+    setAmenityInput('');
     form.reset({
       status: 'scheduled',
       totalSeats: 200,
@@ -97,6 +102,8 @@ export default function TripManagement() {
   function openEdit(trip: Trip) {
     setEditingTrip(trip);
     setVesselImageUrl(trip.vesselImage || '');
+    setAmenityTags(trip.amenities || []);
+    setAmenityInput('');
     form.reset({
       tripName: trip.tripName,
       vesselName: trip.vesselName,
@@ -114,7 +121,6 @@ export default function TripManagement() {
       pricingEconomy: trip.pricing.economy,
       pricingBusiness: trip.pricing.business,
       pricingFirstClass: trip.pricing.firstClass,
-      amenities: trip.amenities.join(', '),
     });
     setShowModal(true);
   }
@@ -124,6 +130,8 @@ export default function TripManagement() {
     form.reset();
     setVesselImageUrl('');
     setEditingTrip(null);
+    setAmenityTags([]);
+    setAmenityInput('');
   }
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -137,6 +145,27 @@ export default function TripManagement() {
       console.error('Image upload failed:', err);
     } finally {
       setUploadingImage(false);
+    }
+  }
+
+  function addAmenityTag(value: string) {
+    const trimmed = value.trim();
+    if (trimmed && !amenityTags.includes(trimmed)) {
+      setAmenityTags(prev => [...prev, trimmed]);
+    }
+    setAmenityInput('');
+  }
+
+  function removeAmenityTag(tag: string) {
+    setAmenityTags(prev => prev.filter(t => t !== tag));
+  }
+
+  function handleAmenityKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addAmenityTag(amenityInput);
+    } else if (e.key === 'Backspace' && amenityInput === '' && amenityTags.length > 0) {
+      setAmenityTags(prev => prev.slice(0, -1));
     }
   }
 
@@ -163,7 +192,7 @@ export default function TripManagement() {
           business: Number(data.pricingBusiness),
           firstClass: Number(data.pricingFirstClass),
         },
-        amenities: data.amenities.split(',').map(s => s.trim()).filter(Boolean),
+        amenities: amenityTags,
       };
 
       if (editingTrip) {
@@ -329,8 +358,38 @@ export default function TripManagement() {
                       </select>
                     </div>
                     <div>
-                      <label className={labelCls}>Amenities <span className="text-navy-400 font-normal">(comma-separated)</span></label>
-                      <input {...form.register('amenities')} placeholder="WiFi, Air Con, Restaurant" className={inputCls} />
+                      <label className={labelCls}>Amenities</label>
+                      <div className="flex gap-2">
+                        <input
+                          ref={amenityInputRef}
+                          value={amenityInput}
+                          onChange={e => setAmenityInput(e.target.value)}
+                          onKeyDown={handleAmenityKeyDown}
+                          placeholder="e.g. WiFi, Air Con..."
+                          className={`${inputCls} flex-1`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => addAmenityTag(amenityInput)}
+                          disabled={!amenityInput.trim()}
+                          className="px-3 py-2.5 bg-navy-700 text-white text-sm font-medium rounded-xl hover:bg-navy-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          Add
+                        </button>
+                      </div>
+                      {amenityTags.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {amenityTags.map(tag => (
+                            <span key={tag} className="inline-flex items-center gap-1 bg-navy-100 text-navy-700 text-xs font-medium px-2 py-1 rounded-lg">
+                              {tag}
+                              <button type="button" onClick={() => removeAmenityTag(tag)} className="text-navy-400 hover:text-navy-700 transition-colors">
+                                <X className="w-3 h-3" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
