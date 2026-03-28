@@ -20,8 +20,8 @@ app.use(cors({
 // ── SMTP Transporter ─────────────────────────────────────────
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: Number(process.env.SMTP_PORT) || 465,
-  secure: process.env.SMTP_SECURE === 'true',
+  port: 587,      // 465 is blocked on Render free tier — use 587 (STARTTLS)
+  secure: false,  // false for STARTTLS (upgrades after connection)
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
