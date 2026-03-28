@@ -7,6 +7,12 @@ dotenv.config();
 
 const app = express();
 app.use(express.json());
+
+// Log every incoming request
+app.use((req, _res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  next();
+});
 app.use(cors({
   origin: '*', // restrict to your domain in production e.g. 'https://monstar-ticketing.web.app'
 }));
