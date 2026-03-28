@@ -3,11 +3,26 @@ import { useNavigate } from 'react-router-dom';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Ship, MapPin, Calendar, Users, Package, ChevronRight, ChevronLeft, CheckCircle, Clock, ArrowRight } from 'lucide-react';
+import { Ship, MapPin, Calendar, Users, Package, ChevronRight, ChevronLeft, CheckCircle, Clock, ArrowRight, Car } from 'lucide-react';
 import { getAvailableTrips, createBooking } from '@/services/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Trip } from '@/types';
 import { formatDate, formatDateTime, formatCurrency } from '@/lib/utils';
+
+// ── Discount config ───────────────────────────────────────────
+const PASSENGER_DISCOUNTS: Record<string, number> = {
+  adult:  0,      // no discount
+  student: 0.20,  // 20% off
+  senior:  0.20,  // 20% off
+  child:   0.50,  // 50% off
+  infant:  1.00,  // 100% off (free)
+};
+
+// ── Vehicle fare config ───────────────────────────────────────
+const VEHICLE_FARES: Record<string, number> = {
+  '2-wheel': 150,   // motorcycles, bikes – cheaper
+  '4-wheel': 800,   // cars, SUVs, trucks – more expensive
+};
 
 // ── Brevo Email Helper ────────────────────────────────────────
 async function sendBookingEmails(booking: any, trip: any) {
@@ -145,10 +160,16 @@ const passengerSchema = z.object({
   firstName: z.string().min(1, 'Required'),
   lastName: z.string().min(1, 'Required'),
   age: z.coerce.number().min(0).max(120),
-  type: z.enum(['adult', 'child', 'senior', 'infant']),
+  type: z.enum(['adult', 'student', 'senior', 'child', 'infant']),
   idType: z.string().optional(),
   idNumber: z.string().optional(),
   seatClass: z.enum(['Economy', 'Business', 'First Class']),
+});
+
+const vehicleSchema = z.object({
+  plateNumber: z.string().min(1, 'Required'),
+  vehicleType: z.string().min(1, 'Required'),
+  wheels: z.enum(['2-wheel', '4-wheel']),
 });
 
 const bookingFormSchema = z.object({
@@ -156,6 +177,8 @@ const bookingFormSchema = z.object({
   hasCargo: z.boolean(),
   cargoDescription: z.string().optional(),
   cargoWeight: z.coerce.number().optional(),
+  hasVehicle: z.boolean(),
+  vehicles: z.array(vehicleSchema).optional(),
   notes: z.string().optional(),
 });
 
@@ -179,10 +202,13 @@ export default function BookTrip() {
     defaultValues: {
       passengers: [{ firstName: '', lastName: '', age: 18, type: 'adult', seatClass: 'Economy' }],
       hasCargo: false,
+      hasVehicle: false,
+      vehicles: [],
     },
   });
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'passengers' });
+  const { fields: vehicleFields, append: appendVehicle, remove: removeVehicle } = useFieldArray({ control: form.control, name: 'vehicles' });
 
   useEffect(() => {
     getAvailableTrips().then(setTrips).finally(() => setLoadingTrips(false));
@@ -194,17 +220,26 @@ export default function BookTrip() {
     return oMatch && dMatch;
   });
 
+  function calcPassengerFare(pType: string, basePrice: number): number {
+    const discount = PASSENGER_DISCOUNTS[pType] ?? 0;
+    return Math.round(basePrice * (1 - discount));
+  }
+
   function calcTotal(data: BookingFormData): number {
     if (!selectedTrip) return 0;
-    return data.passengers.reduce((sum, p) => {
-      const price =
+    const passengerTotal = data.passengers.reduce((sum, p) => {
+      const basePrice =
         p.seatClass === 'First Class'
           ? selectedTrip.pricing.firstClass
           : p.seatClass === 'Business'
           ? selectedTrip.pricing.business
           : selectedTrip.pricing.economy;
-      return sum + price;
+      return sum + calcPassengerFare(p.type, basePrice);
     }, 0);
+    const vehicleTotal = (data.vehicles || []).reduce((sum, v) => {
+      return sum + (VEHICLE_FARES[v.wheels] ?? 0);
+    }, 0);
+    return passengerTotal + vehicleTotal;
   }
 
   async function onSubmit(data: BookingFormData) {
@@ -219,6 +254,9 @@ export default function BookTrip() {
         passengers: data.passengers.map((p) => ({ ...p, age: Number(p.age) })),
         cargo: (data.hasCargo && data.cargoDescription)
           ? [{ description: data.cargoDescription, weight: Number(data.cargoWeight) || 0 }]
+          : [],
+        vehicles: (data.hasVehicle && data.vehicles && data.vehicles.length > 0)
+          ? data.vehicles.map((v) => ({ ...v, fare: VEHICLE_FARES[v.wheels] ?? 0 }))
           : [],
         totalAmount: calcTotal(data),
         notes: data.notes || '',
@@ -435,10 +473,11 @@ export default function BookTrip() {
                         {...form.register(`passengers.${index}.type`)}
                         className="w-full px-3 py-2.5 border border-navy-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy-500"
                       >
-                        <option value="adult">Adult</option>
-                        <option value="child">Child</option>
-                        <option value="senior">Senior</option>
-                        <option value="infant">Infant</option>
+                        <option value="adult">Adult (Full price)</option>
+                        <option value="student">Student (20% discount)</option>
+                        <option value="senior">Senior Citizen (20% discount)</option>
+                        <option value="child">Child (50% discount)</option>
+                        <option value="infant">Infant (Free)</option>
                       </select>
                     </div>
                     <div>
@@ -505,6 +544,78 @@ export default function BookTrip() {
             )}
           </div>
 
+          {/* Vehicle */}
+          <div className="card-maritime p-5">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                {...form.register('hasVehicle')}
+                className="w-4 h-4 accent-navy-900"
+              />
+              <span className="font-medium text-navy-900 flex items-center gap-2"><Car className="w-4 h-4" />Add Vehicle</span>
+            </label>
+            {form.watch('hasVehicle') && (
+              <div className="mt-4 space-y-4">
+                {/* Fare info banner */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-navy-50 border border-navy-100 rounded-xl p-3 text-center">
+                    <div className="text-xs text-navy-500 mb-1">🏍️ 2-Wheel (Motorcycle/Bike)</div>
+                    <div className="font-display font-bold text-navy-900 text-lg">{formatCurrency(VEHICLE_FARES['2-wheel'])}</div>
+                  </div>
+                  <div className="bg-navy-50 border border-navy-100 rounded-xl p-3 text-center">
+                    <div className="text-xs text-navy-500 mb-1">🚗 4-Wheel (Car/SUV/Truck)</div>
+                    <div className="font-display font-bold text-navy-900 text-lg">{formatCurrency(VEHICLE_FARES['4-wheel'])}</div>
+                  </div>
+                </div>
+
+                {vehicleFields.map((vfield, vi) => (
+                  <div key={vfield.id} className="border border-navy-100 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-navy-700">Vehicle {vi + 1}</span>
+                      <button type="button" onClick={() => removeVehicle(vi)} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                    </div>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-medium text-navy-600 block mb-1.5">Plate Number *</label>
+                        <input
+                          {...form.register(`vehicles.${vi}.plateNumber`)}
+                          className="w-full px-3 py-2.5 border border-navy-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy-500"
+                          placeholder="e.g. ABC 1234"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-navy-600 block mb-1.5">Vehicle Type *</label>
+                        <input
+                          {...form.register(`vehicles.${vi}.vehicleType`)}
+                          className="w-full px-3 py-2.5 border border-navy-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy-500"
+                          placeholder="e.g. Motorcycle, Car, SUV"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="text-xs font-medium text-navy-600 block mb-1.5">Wheel Type & Fare</label>
+                        <select
+                          {...form.register(`vehicles.${vi}.wheels`)}
+                          className="w-full px-3 py-2.5 border border-navy-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy-500"
+                        >
+                          <option value="2-wheel">2-Wheel (Motorcycle / Bike) — {formatCurrency(VEHICLE_FARES['2-wheel'])}</option>
+                          <option value="4-wheel">4-Wheel (Car / SUV / Truck) — {formatCurrency(VEHICLE_FARES['4-wheel'])}</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => appendVehicle({ plateNumber: '', vehicleType: '', wheels: '2-wheel' })}
+                  className="text-sm text-navy-700 hover:text-navy-900 font-medium flex items-center gap-1 border border-navy-200 px-3 py-1.5 rounded-lg hover:bg-navy-50"
+                >
+                  + Add Another Vehicle
+                </button>
+              </div>
+            )}
+          </div>
+
           <div>
             <label className="text-xs font-medium text-navy-600 block mb-1.5">Special Notes (optional)</label>
             <textarea {...form.register('notes')} rows={2} className="w-full px-3 py-2.5 border border-navy-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy-500 resize-none" placeholder="Any special requirements..." />
@@ -541,24 +652,34 @@ export default function BookTrip() {
             <div>
               <h4 className="text-sm font-semibold text-navy-700 mb-3">Passengers</h4>
               <div className="space-y-2">
-                {form.getValues('passengers').map((p, i) => (
-                  <div key={i} className="flex items-center justify-between py-2 border-b border-navy-100 last:border-0">
-                    <div>
-                      <span className="text-sm font-medium text-navy-900">{p.firstName} {p.lastName}</span>
-                      <span className="text-xs text-navy-500 ml-2 capitalize">({p.type})</span>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm text-navy-700">{p.seatClass}</div>
-                      <div className="text-xs font-semibold text-navy-900">
-                        {formatCurrency(
-                          p.seatClass === 'First Class' ? selectedTrip.pricing.firstClass
-                            : p.seatClass === 'Business' ? selectedTrip.pricing.business
-                            : selectedTrip.pricing.economy
+                {form.getValues('passengers').map((p, i) => {
+                  const basePrice =
+                    p.seatClass === 'First Class' ? selectedTrip.pricing.firstClass
+                      : p.seatClass === 'Business' ? selectedTrip.pricing.business
+                      : selectedTrip.pricing.economy;
+                  const discount = PASSENGER_DISCOUNTS[p.type] ?? 0;
+                  const finalFare = calcPassengerFare(p.type, basePrice);
+                  return (
+                    <div key={i} className="flex items-center justify-between py-2 border-b border-navy-100 last:border-0">
+                      <div>
+                        <span className="text-sm font-medium text-navy-900">{p.firstName} {p.lastName}</span>
+                        <span className="text-xs text-navy-500 ml-2 capitalize">({p.type})</span>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm text-navy-700">{p.seatClass}</div>
+                        {discount > 0 && (
+                          <div className="text-xs text-navy-400 line-through">{formatCurrency(basePrice)}</div>
                         )}
+                        <div className="flex items-center gap-1 justify-end">
+                          {discount > 0 && (
+                            <span className="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium">-{(discount * 100).toFixed(0)}%</span>
+                          )}
+                          <span className="text-xs font-semibold text-navy-900">{discount === 1 ? 'FREE' : formatCurrency(finalFare)}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -566,6 +687,26 @@ export default function BookTrip() {
               <div>
                 <h4 className="text-sm font-semibold text-navy-700 mb-2">Cargo</h4>
                 <div className="text-sm text-navy-600">{form.getValues('cargoDescription')} — {form.getValues('cargoWeight')} kg</div>
+              </div>
+            )}
+
+            {form.getValues('hasVehicle') && (form.getValues('vehicles') || []).length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-navy-700 mb-2">Vehicles</h4>
+                <div className="space-y-2">
+                  {(form.getValues('vehicles') || []).map((v, i) => (
+                    <div key={i} className="flex items-center justify-between py-2 border-b border-navy-100 last:border-0">
+                      <div>
+                        <span className="text-sm font-medium text-navy-900">{v.vehicleType}</span>
+                        <span className="text-xs text-navy-500 ml-2">({v.plateNumber})</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs text-navy-500">{v.wheels === '2-wheel' ? '🏍️ 2-Wheel' : '🚗 4-Wheel'}</span>
+                        <div className="text-xs font-semibold text-navy-900">{formatCurrency(VEHICLE_FARES[v.wheels] ?? 0)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

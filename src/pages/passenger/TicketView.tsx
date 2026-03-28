@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Ship, MapPin, Calendar, Clock, Users, Package, Download, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
+import { Ship, Calendar, Clock, Users, Package, Download, ArrowLeft, CheckCircle, AlertCircle, XCircle } from 'lucide-react';
 import QRCode from 'qrcode';
-import { getBookingById, getTripById } from '@/services/firestore';
+import { getBookingById, getTripById, updateBookingStatus } from '@/services/firestore';
 import type { Booking, Trip } from '@/types';
 import { formatDate, formatDateTime, formatCurrency, getStatusColor } from '@/lib/utils';
 
@@ -12,6 +12,8 @@ export default function TicketView() {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [qrUrl, setQrUrl] = useState('');
   const [loading, setLoading] = useState(true);
+  const [cancelling, setCancelling] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const ticketRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -163,6 +165,20 @@ export default function TicketView() {
   }
 
 
+  async function handleCancel() {
+    if (!booking) return;
+    setCancelling(true);
+    try {
+      await updateBookingStatus(booking.id, 'cancelled');
+      setBooking({ ...booking, status: 'cancelled' });
+      setShowCancelConfirm(false);
+    } catch (e) {
+      console.error('Cancel failed:', e);
+    } finally {
+      setCancelling(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-64">
@@ -184,7 +200,7 @@ export default function TicketView() {
     );
   }
 
-  const isConfirmed = booking.status === 'confirmed';
+  const canCancel = booking.status === 'pending' || booking.status === 'confirmed';
 
   return (
     <div className="space-y-6 animate-fade-in print:space-y-4">
@@ -199,14 +215,56 @@ export default function TicketView() {
             <p className="text-navy-500 text-sm">Booking #{booking.bookingRef}</p>
           </div>
         </div>
-        <button onClick={handlePrint} className="btn-outline flex items-center gap-2 text-sm print:hidden">
-          <Download className="w-4 h-4" />
-          Save / Print
-        </button>
+        <div className="flex items-center gap-2">
+          {canCancel && (
+            <button
+              onClick={() => setShowCancelConfirm(true)}
+              className="flex items-center gap-2 text-sm text-red-600 hover:text-red-800 border border-red-200 hover:border-red-400 px-3 py-2 rounded-xl hover:bg-red-50 transition-all"
+            >
+              <XCircle className="w-4 h-4" />
+              Cancel Booking
+            </button>
+          )}
+          <button onClick={handlePrint} className="btn-outline flex items-center gap-2 text-sm print:hidden">
+            <Download className="w-4 h-4" />
+            Save / Print
+          </button>
+        </div>
       </div>
 
+      {/* Cancel Confirm Dialog */}
+      {showCancelConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <XCircle className="w-6 h-6 text-red-500" />
+            </div>
+            <h3 className="font-display text-lg font-bold text-navy-900 text-center mb-2">Cancel Booking?</h3>
+            <p className="text-sm text-navy-500 text-center mb-6">
+              Are you sure you want to cancel booking <span className="font-mono font-semibold text-navy-800">{booking.bookingRef}</span>? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowCancelConfirm(false)}
+                disabled={cancelling}
+                className="flex-1 px-4 py-2.5 border border-navy-200 rounded-xl text-sm font-medium text-navy-700 hover:bg-navy-50 transition-colors"
+              >
+                Keep Booking
+              </button>
+              <button
+                onClick={handleCancel}
+                disabled={cancelling}
+                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-60"
+              >
+                {cancelling ? 'Cancelling...' : 'Yes, Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Status Banner */}
-      {!isConfirmed && (
+      {booking.status !== 'confirmed' && (
         <div className={`rounded-2xl p-4 flex items-center gap-3 ${
           booking.status === 'pending' ? 'bg-amber-50 border border-amber-200' : 'bg-red-50 border border-red-200'
         }`}>
@@ -224,7 +282,7 @@ export default function TicketView() {
         </div>
       )}
 
-      {isConfirmed && (
+      {booking.status === 'confirmed' && (
         <div className="rounded-2xl p-4 bg-emerald-50 border border-emerald-200 flex items-center gap-3">
           <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
           <p className="text-sm font-medium text-emerald-800">Booking confirmed — Show QR code at boarding</p>
@@ -338,7 +396,7 @@ export default function TicketView() {
 
           {/* QR Code */}
           <div className="flex-shrink-0 flex flex-col items-center gap-2">
-            {isConfirmed && qrUrl ? (
+            {booking.status === 'confirmed' && qrUrl ? (
               <>
                 <img src={qrUrl} alt="Boarding QR Code" className="w-28 h-28 rounded-xl border-2 border-navy-200" />
                 <span className="text-xs text-navy-400 text-center">Scan to board</span>

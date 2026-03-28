@@ -41,7 +41,7 @@ export interface Trip {
 }
 
 export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
-export type PassengerType = 'adult' | 'child' | 'senior' | 'infant';
+export type PassengerType = 'adult' | 'student' | 'child' | 'senior' | 'infant';
 
 export interface PassengerDetail {
   firstName: string;
@@ -60,6 +60,15 @@ export interface CargoDetail {
   dimensions?: string;
 }
 
+export type VehicleWheels = '2-wheel' | '4-wheel';
+
+export interface VehicleDetail {
+  plateNumber: string;
+  vehicleType: string; // e.g. Motorcycle, Car, SUV, Truck
+  wheels: VehicleWheels;
+  fare: number;
+}
+
 export interface Booking {
   id: string;
   bookingRef: string;
@@ -70,6 +79,7 @@ export interface Booking {
   trip?: Trip;
   passengers: PassengerDetail[];
   cargo?: CargoDetail[];
+  vehicles?: VehicleDetail[];
   totalAmount: number;
   status: BookingStatus;
   paymentStatus: 'unpaid' | 'paid' | 'refunded';
