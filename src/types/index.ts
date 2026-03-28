@@ -64,8 +64,8 @@ export type VehicleWheels = '2-wheel' | '4-wheel';
 
 export interface VehicleDetail {
   plateNumber: string;
-  vehicleType: string; // e.g. Motorcycle, Car, SUV, Truck
-  wheels: VehicleWheels;
+  vehicleType: string; // e.g. "🏍️ Motorcycle", "🚗 Sedan / Car"
+  wheels: VehicleWheels; // kept for backward compat
   fare: number;
 }
 

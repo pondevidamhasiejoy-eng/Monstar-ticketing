@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, KeyboardEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Ship, Plus, Edit2, Trash2, X, Upload, Calendar, Users, Package, MapPin, Clock, Tag } from 'lucide-react';
+import { Ship, Plus, Edit2, Trash2, X, Upload, Calendar, Users, MapPin, Clock, Tag } from 'lucide-react';
 import { getTrips, createTrip, updateTrip, deleteTrip } from '@/services/firestore';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import type { Trip } from '@/types';
@@ -20,11 +20,7 @@ const tripSchema = z.object({
   status: z.enum(['scheduled', 'boarding', 'departed', 'arrived', 'cancelled']),
   totalSeats: z.coerce.number().min(1),
   availableSeats: z.coerce.number().min(0),
-  totalCargoCapacity: z.coerce.number().min(0),
-  availableCargoCapacity: z.coerce.number().min(0),
-  pricingEconomy: z.coerce.number().min(0),
-  pricingBusiness: z.coerce.number().min(0),
-  pricingFirstClass: z.coerce.number().min(0),
+  baseFare: z.coerce.number().min(0),
   amenities: z.string().optional(),
 });
 
@@ -62,11 +58,7 @@ export default function TripManagement() {
       status: 'scheduled',
       totalSeats: 200,
       availableSeats: 200,
-      totalCargoCapacity: 5000,
-      availableCargoCapacity: 5000,
-      pricingEconomy: 0,
-      pricingBusiness: 0,
-      pricingFirstClass: 0,
+      baseFare: 0,
       amenities: '',
     },
   });
@@ -89,11 +81,7 @@ export default function TripManagement() {
       status: 'scheduled',
       totalSeats: 200,
       availableSeats: 200,
-      totalCargoCapacity: 5000,
-      availableCargoCapacity: 5000,
-      pricingEconomy: 0,
-      pricingBusiness: 0,
-      pricingFirstClass: 0,
+      baseFare: 0,
       amenities: '',
     });
     setShowModal(true);
@@ -116,11 +104,7 @@ export default function TripManagement() {
       status: trip.status,
       totalSeats: trip.totalSeats,
       availableSeats: trip.availableSeats,
-      totalCargoCapacity: trip.totalCargoCapacity,
-      availableCargoCapacity: trip.availableCargoCapacity,
-      pricingEconomy: trip.pricing.economy,
-      pricingBusiness: trip.pricing.business,
-      pricingFirstClass: trip.pricing.firstClass,
+      baseFare: trip.pricing.economy,
     });
     setShowModal(true);
   }
@@ -185,12 +169,12 @@ export default function TripManagement() {
         status: data.status,
         totalSeats: Number(data.totalSeats),
         availableSeats: Number(data.availableSeats),
-        totalCargoCapacity: Number(data.totalCargoCapacity),
-        availableCargoCapacity: Number(data.availableCargoCapacity),
+        totalCargoCapacity: 0,
+        availableCargoCapacity: 0,
         pricing: {
-          economy: Number(data.pricingEconomy),
-          business: Number(data.pricingBusiness),
-          firstClass: Number(data.pricingFirstClass),
+          economy:    Number(data.baseFare),
+          business:   Number(data.baseFare),
+          firstClass: Number(data.baseFare),
         },
         amenities: amenityTags,
       };
@@ -266,8 +250,7 @@ export default function TripManagement() {
                   <div className="grid grid-cols-2 gap-2 text-xs text-navy-500 mb-4">
                     <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{formatDate(trip.departureDate)}</span>
                     <span className="flex items-center gap-1"><Users className="w-3 h-3" />{trip.availableSeats}/{trip.totalSeats} seats</span>
-                    <span className="flex items-center gap-1"><Package className="w-3 h-3" />{trip.availableCargoCapacity}kg cargo</span>
-                    <span className="text-emerald-600 font-medium">{formatCurrency(trip.pricing.economy)}+</span>
+                    <span className="text-emerald-600 font-medium col-span-2">Fare: {formatCurrency(trip.pricing.economy)}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={() => openEdit(trip)} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium border border-navy-200 rounded-xl hover:bg-navy-50 text-navy-700 transition-colors">
@@ -455,42 +438,19 @@ export default function TripManagement() {
                     <label className={labelCls}>Available Seats</label>
                     <input {...form.register('availableSeats')} type="number" min={0} className={inputCls} />
                   </div>
-                  <div>
-                    <label className={labelCls}>Total Cargo (kg)</label>
-                    <input {...form.register('totalCargoCapacity')} type="number" min={0} className={inputCls} />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Available Cargo (kg)</label>
-                    <input {...form.register('availableCargoCapacity')} type="number" min={0} className={inputCls} />
-                  </div>
                 </div>
               </div>
 
               {/* Pricing */}
               <div>
-                <SectionHeader icon={Tag} title="Pricing (₱)" />
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className={labelCls}>Economy</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400 text-sm font-medium">₱</span>
-                      <input {...form.register('pricingEconomy')} type="number" min={0} className={`${inputCls} pl-7`} placeholder="0" />
-                    </div>
+                <SectionHeader icon={Tag} title="Fare (₱)" />
+                <div className="max-w-xs">
+                  <label className={labelCls}>Base Fare per Passenger *</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400 text-sm font-medium">₱</span>
+                    <input {...form.register('baseFare')} type="number" min={0} className={`${inputCls} pl-7`} placeholder="0" />
                   </div>
-                  <div>
-                    <label className={labelCls}>Business</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400 text-sm font-medium">₱</span>
-                      <input {...form.register('pricingBusiness')} type="number" min={0} className={`${inputCls} pl-7`} placeholder="0" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className={labelCls}>First Class</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400 text-sm font-medium">₱</span>
-                      <input {...form.register('pricingFirstClass')} type="number" min={0} className={`${inputCls} pl-7`} placeholder="0" />
-                    </div>
-                  </div>
+                  <p className="text-xs text-navy-400 mt-1.5">Discounts (Student 20%, Senior 20%, Child 50%) are applied automatically at booking.</p>
                 </div>
               </div>
             </div>
