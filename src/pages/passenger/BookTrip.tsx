@@ -89,14 +89,21 @@ export default function BookTrip() {
         passengerEmail: userProfile.email,
         tripId: selectedTrip.id,
         passengers: data.passengers.map((p) => ({ ...p, age: Number(p.age) })),
-        cargo: data.hasCargo && data.cargoDescription
+        cargo: (data.hasCargo && data.cargoDescription)
           ? [{ description: data.cargoDescription, weight: Number(data.cargoWeight) || 0 }]
-          : undefined,
+          : [],
         totalAmount: calcTotal(data),
-        notes: data.notes,
+        notes: data.notes || '',
         status: 'pending',
         paymentStatus: 'unpaid',
       } as never);
+      // Send email notification (non-blocking — don't fail booking if email fails)
+      fetch(import.meta.env.VITE_EMAIL_SERVER_URL + '/send-booking-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ booking, trip: selectedTrip }),
+      }).catch((err) => console.error('Email notification failed:', err));
+
       navigate(`/passenger/ticket/${booking.id}`);
     } catch (e) {
       console.error(e);
