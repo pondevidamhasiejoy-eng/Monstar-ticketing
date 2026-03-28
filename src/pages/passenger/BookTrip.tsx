@@ -9,6 +9,134 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { Trip } from '@/types';
 import { formatDate, formatDateTime, formatCurrency } from '@/lib/utils';
 
+// ── Brevo Email Helper ────────────────────────────────────────
+async function sendBookingEmails(booking: any, trip: any) {
+  const BREVO_API_KEY = import.meta.env.VITE_BREVO_API_KEY;
+  const ADMIN_EMAIL  = import.meta.env.VITE_ADMIN_EMAIL;
+
+  const formatAmt = (n: number) =>
+    '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+
+  const formatDt = (d: string) =>
+    new Date(d).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  const passengerRows = (booking.passengers || [])
+    .map((p: any) => `
+      <tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;">${p.firstName} ${p.lastName}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-transform:capitalize;">${p.type}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;">${p.seatClass}</td>
+      </tr>`)
+    .join('');
+
+  const passengerHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:sans-serif;">
+  <div style="max-width:600px;margin:32px auto;background:white;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+    <div style="background:#0a1628;padding:32px;text-align:center;">
+      <h1 style="margin:0;color:white;font-size:24px;font-weight:700;">MonStar Ship Lines</h1>
+      <p style="margin:6px 0 0;color:#94a3b8;font-size:13px;">Booking Confirmation</p>
+    </div>
+    <div style="padding:32px;">
+      <p style="margin:0 0 8px;color:#0f172a;font-size:16px;">Hi <strong>${booking.passengerName}</strong>,</p>
+      <p style="margin:0 0 24px;color:#475569;font-size:14px;line-height:1.6;">
+        Your booking has been received and is currently <strong>pending payment confirmation</strong>.
+        You will receive another email once confirmed.
+      </p>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
+        <p style="margin:0 0 4px;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Booking Reference</p>
+        <p style="margin:0;color:#0a1628;font-size:22px;font-weight:700;font-family:monospace;">${booking.bookingRef}</p>
+      </div>
+      <h3 style="margin:0 0 12px;color:#0f172a;font-size:14px;text-transform:uppercase;">Trip Details</h3>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:24px;font-size:14px;">
+        <tr><td style="padding:8px 0;color:#64748b;width:40%;">Route</td><td style="padding:8px 0;color:#0f172a;font-weight:600;">${trip.origin} → ${trip.destination}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;">Vessel</td><td style="padding:8px 0;color:#0f172a;">${trip.vesselName}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;">Departure</td><td style="padding:8px 0;color:#0f172a;">${formatDt(trip.departureDate)} at ${trip.departureTime}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;">Arrival</td><td style="padding:8px 0;color:#0f172a;">${formatDt(trip.arrivalDate)} at ${trip.arrivalTime}</td></tr>
+      </table>
+      <h3 style="margin:0 0 12px;color:#0f172a;font-size:14px;text-transform:uppercase;">Passengers</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:24px;">
+        <thead><tr style="background:#f1f5f9;">
+          <th style="padding:8px 12px;text-align:left;color:#475569;">Name</th>
+          <th style="padding:8px 12px;text-align:left;color:#475569;">Type</th>
+          <th style="padding:8px 12px;text-align:left;color:#475569;">Class</th>
+        </tr></thead>
+        <tbody>${passengerRows}</tbody>
+      </table>
+      <div style="background:#0a1628;border-radius:8px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;">
+        <span style="color:#94a3b8;font-size:14px;">Total Fare</span>
+        <span style="color:#f59e0b;font-size:20px;font-weight:700;">${formatAmt(booking.totalAmount)}</span>
+      </div>
+      <p style="margin:24px 0 0;color:#64748b;font-size:13px;line-height:1.6;">
+        Present your booking reference at the port for payment and boarding.
+      </p>
+    </div>
+    <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 32px;text-align:center;">
+      <p style="margin:0;color:#94a3b8;font-size:12px;">MonStar Ship Lines · Valid for date of travel only</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const adminHtml = `
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:sans-serif;">
+  <div style="max-width:600px;margin:32px auto;background:white;border-radius:12px;overflow:hidden;">
+    <div style="background:#0a1628;padding:24px 32px;">
+      <h2 style="margin:0;color:white;font-size:18px;">New Booking Received</h2>
+      <p style="margin:4px 0 0;color:#94a3b8;font-size:13px;">MonStar Admin Notification</p>
+    </div>
+    <div style="padding:32px;font-size:14px;color:#0f172a;">
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><td style="padding:8px 0;color:#64748b;width:40%;">Booking Ref</td><td style="padding:8px 0;font-weight:700;font-family:monospace;">${booking.bookingRef}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;">Passenger</td><td style="padding:8px 0;">${booking.passengerName}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;">Email</td><td style="padding:8px 0;">${booking.passengerEmail}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;">Pax Count</td><td style="padding:8px 0;">${(booking.passengers || []).length}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;">Route</td><td style="padding:8px 0;">${trip.origin} → ${trip.destination}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;">Departure</td><td style="padding:8px 0;">${formatDt(trip.departureDate)} ${trip.departureTime}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;">Total</td><td style="padding:8px 0;font-weight:700;">${formatAmt(booking.totalAmount)}</td></tr>
+      </table>
+      <p style="margin:24px 0 0;color:#64748b;font-size:13px;">Log in to the admin panel to confirm payment.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const send = (to: string, subject: string, html: string) =>
+    fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': BREVO_API_KEY,
+      },
+      body: JSON.stringify({
+        sender: { name: 'MonStar Ship Lines', email: 'mhasiejoyp@gmail.com' },
+        to: [{ email: to }],
+        subject,
+        htmlContent: html,
+      }),
+    });
+
+  // Send to passenger
+  await send(
+    booking.passengerEmail,
+    `Booking Received – ${booking.bookingRef} | MonStar Ship Lines`,
+    passengerHtml
+  );
+
+  // Send to admin
+  if (ADMIN_EMAIL) {
+    await send(
+      ADMIN_EMAIL,
+      `New Booking: ${booking.bookingRef} – ${booking.passengerName}`,
+      adminHtml
+    );
+  }
+}
+
 // Step 1: Select Trip
 // Step 2: Enter Passenger Details
 // Step 3: Validate & Confirm Booking
@@ -97,12 +225,10 @@ export default function BookTrip() {
         status: 'pending',
         paymentStatus: 'unpaid',
       } as never);
-      // Send email notification (non-blocking — don't fail booking if email fails)
-      fetch(import.meta.env.VITE_EMAIL_SERVER_URL + '/send-booking-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ booking, trip: selectedTrip }),
-      }).catch((err) => console.error('Email notification failed:', err));
+      // Send email notifications via Brevo API
+      sendBookingEmails(booking, selectedTrip).catch((err) =>
+        console.error('[Email] Failed:', err)
+      );
 
       navigate(`/passenger/ticket/${booking.id}`);
     } catch (e) {
