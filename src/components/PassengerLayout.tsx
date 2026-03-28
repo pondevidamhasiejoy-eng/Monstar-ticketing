@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { Anchor, LayoutDashboard, Ship, Ticket, LogOut, User, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Ship, Ticket, LogOut, User, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -24,7 +24,7 @@ export default function PassengerLayout() {
     <>
       <div className="flex items-center gap-3 px-6 py-5 border-b border-navy-100">
         <div className="w-9 h-9 bg-navy-900 rounded-xl flex items-center justify-center flex-shrink-0">
-          <Anchor className="w-5 h-5 text-gold-400" />
+          <img src="/assets/logo2.png" className="w-5 h-5" alt="logo" />
         </div>
         <div>
           <span className="font-display font-bold text-navy-900 text-base leading-none block">MonStar</span>
@@ -101,7 +101,7 @@ export default function PassengerLayout() {
         <header className="lg:hidden sticky top-0 z-20 bg-white border-b border-navy-100 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-navy-900 rounded-lg flex items-center justify-center">
-              <Anchor className="w-4 h-4 text-gold-400" />
+              <img src="/assets/logo2.png" className="w-4 h-4" alt="logo" />
             </div>
             <span className="font-display font-bold text-navy-900">MonStar</span>
           </div>

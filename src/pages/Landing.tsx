@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Ship, Anchor, MapPin, Clock, Shield, Star, ChevronRight, Waves } from 'lucide-react';
+import { Ship, MapPin, Clock, Shield, Star, ChevronRight, Waves } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function LandingPage() {
@@ -137,7 +137,7 @@ export default function LandingPage() {
                 desc: 'Always up-to-date trip info, seat availability and capacity.',
               },
               {
-                icon: <Anchor className="w-7 h-7 text-navy-700" />,
+                icon: <img src="/assets/logo2.png" className="w-7 h-7" alt="logo" />,
                 title: 'Cargo Booking',
                 desc: 'Ship your cargo alongside passengers with our integrated system.',
               },
@@ -180,7 +180,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-navy-800 rounded-lg flex items-center justify-center">
-              <Anchor className="w-4 h-4 text-gold-400" />
+              <img src="/assets/logo2.png" className="w-4 h-4" alt="logo" />
             </div>
             <span className="font-display text-white font-semibold">MonStar Ship Lines</span>
           </div>

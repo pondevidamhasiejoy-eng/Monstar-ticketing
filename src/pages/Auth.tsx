@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Anchor, Eye, EyeOff, Mail, Lock, User, Phone, Ship } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Phone, Ship } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { FirebaseError } from 'firebase/app';
 
@@ -149,7 +149,7 @@ export default function AuthPage() {
           {/* Mobile Logo */}
           <div className="flex lg:hidden items-center gap-3 mb-8">
             <div className="w-10 h-10 bg-navy-900 rounded-xl flex items-center justify-center">
-              <Anchor className="w-5 h-5 text-gold-400" />
+              <img src="/assets/logo2.png" className="w-5 h-5" alt="logo" />
             </div>
             <span className="font-display font-bold text-navy-900 text-xl">MonStar Ship</span>
           </div>

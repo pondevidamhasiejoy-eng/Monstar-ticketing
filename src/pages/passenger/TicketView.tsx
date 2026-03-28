@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Ship, MapPin, Calendar, Clock, Users, Package, Download, ArrowLeft, CheckCircle, AlertCircle, Anchor } from 'lucide-react';
+import { Ship, MapPin, Calendar, Clock, Users, Package, Download, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
 import QRCode from 'qrcode';
 import { getBookingById, getTripById } from '@/services/firestore';
 import type { Booking, Trip } from '@/types';
@@ -108,7 +108,7 @@ export default function TicketView() {
         <div className="bg-navy-950 px-8 py-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gold-400 rounded-xl flex items-center justify-center">
-              <Anchor className="w-5 h-5 text-navy-950" />
+              <img src="/assets/logo2.png" className="w-5 h-5" alt="logo" />
             </div>
             <div>
               <div className="font-display font-bold text-white text-lg leading-none">MonStar</div>

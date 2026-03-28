@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { Anchor, LayoutDashboard, Ship, ClipboardList, FileText, LogOut, ShieldCheck, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Ship, ClipboardList, FileText, LogOut, ShieldCheck, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -106,7 +106,7 @@ export default function AdminLayout() {
         <header className="lg:hidden sticky top-0 z-20 bg-navy-950 border-b border-navy-800 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-gold-400 rounded-lg flex items-center justify-center">
-              <Anchor className="w-4 h-4 text-navy-950" />
+              <img src="/assets/logo2.png" className="w-4 h-4" alt="logo" />
             </div>
             <span className="font-display font-bold text-white">Admin</span>
           </div>
