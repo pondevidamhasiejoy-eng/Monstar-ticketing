@@ -40,7 +40,7 @@ export interface Trip {
   updatedAt: Date;
 }
 
-export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
+export type BookingStatus = 'pending' | 'confirmed' | 'scanned' | 'cancelled' | 'completed';
 export type PassengerType = 'adult' | 'student' | 'child' | 'senior' | 'infant';
 
 export interface PassengerDetail {

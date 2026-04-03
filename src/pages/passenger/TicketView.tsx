@@ -264,7 +264,7 @@ export default function TicketView() {
       )}
 
       {/* Status Banner */}
-      {booking.status !== 'confirmed' && (
+      {booking.status !== 'confirmed' && booking.status !== 'scanned' && (
         <div className={`rounded-2xl p-4 flex items-center gap-3 ${
           booking.status === 'pending' ? 'bg-amber-50 border border-amber-200' : 'bg-red-50 border border-red-200'
         }`}>
@@ -279,6 +279,13 @@ export default function TicketView() {
               <p className="text-xs text-amber-600 mt-0.5">Your QR-code ticket will appear here once confirmed.</p>
             )}
           </div>
+        </div>
+      )}
+
+      {booking.status === 'scanned' && (
+        <div className="rounded-2xl p-4 bg-emerald-50 border border-emerald-200 flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+          <p className="text-sm font-medium text-emerald-800">Boarding confirmed — QR code successfully scanned</p>
         </div>
       )}
 
@@ -400,6 +407,27 @@ export default function TicketView() {
               <>
                 <img src={qrUrl} alt="Boarding QR Code" className="w-28 h-28 rounded-xl border-2 border-navy-200" />
                 <span className="text-xs text-navy-400 text-center">Scan to board</span>
+              </>
+            ) : booking.status === 'scanned' && qrUrl ? (
+              <>
+                <div className="relative">
+                  <img src={qrUrl} alt="Boarding QR Code" className="w-28 h-28 rounded-xl border-2 border-navy-200 opacity-50" />
+                  <div className="absolute inset-0 bg-emerald-500/90 rounded-xl flex items-center justify-center">
+                    <div className="text-center text-white">
+                      <CheckCircle className="w-8 h-8 mx-auto mb-1" />
+                      <span className="text-xs font-semibold">Confirmed</span>
+                    </div>
+                  </div>
+                </div>
+                <span className="text-xs text-emerald-600 text-center font-medium">Boarding confirmed</span>
+              </>
+            ) : booking.status === 'scanned' ? (
+              <>
+                <div className="w-28 h-28 rounded-xl border-2 border-emerald-200 bg-emerald-50 flex flex-col items-center justify-center text-center">
+                  <CheckCircle className="w-8 h-8 text-emerald-600 mb-1" />
+                  <span className="text-xs font-semibold text-emerald-700">Confirmed</span>
+                </div>
+                <span className="text-xs text-emerald-600 text-center font-medium">Boarding confirmed</span>
               </>
             ) : (
               <div className="w-28 h-28 rounded-xl border-2 border-dashed border-navy-200 flex flex-col items-center justify-center text-center">
